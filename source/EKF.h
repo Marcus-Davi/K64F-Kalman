@@ -8,7 +8,10 @@
 #ifndef EKF_H_
 #define EKF_H_
 
+//tentar fazer memcpy mais legível!
+
 #include "arm_math.h"
+//#include "stdint.h"
 
 //Ponteiro pra funções (jacobiana, processo, measurement, ...)
 // f(x,u) -> Estados Xk, Entradas Uk
@@ -17,16 +20,93 @@ typedef void (*FunctionPt)(const float* Xk,const float *Uk,arm_matrix_instance_f
 namespace Kalman {
 
 class EKF {
+
+	//Methods
 public:
-	EKF();
+	EKF(uint8_t n_states, uint8_t n_inputs, uint8_t n_outputs);
 	virtual ~EKF();
 
+	inline void SetQn(const float* qndata){
+		memcpy(QnData,qndata,n_states*n_states*sizeof(float));
+	}
+	inline void SetRn(const float* rndata){
+		memcpy(RnData,rndata,n_outputs*n_outputs*sizeof(float));
+	}
+	inline void SetX0(const float* x0){
+		memcpy(XestData,x0,n_states*sizeof(float));
 
+	}
+
+
+	inline void SetStateFunction(FunctionPt F) {
+		StateFun = F;
+	}
+	inline void  SetStateJacobian(FunctionPt F){
+		Jacobian_F = F;
+	}
+	inline void  SetMeasurementJacobian(FunctionPt F){
+		Jacobian_H = F;
+	}
+	inline void SetMeasurementFunction(FunctionPt F){
+		MeasureFun = F;
+	}
+
+	inline unsigned int GetFloatsUsed(){
+		return floats_used;
+	}
+
+	inline void SetInput(float* inputs){
+		memcpy(UData,inputs,n_inputs*sizeof(float));
+	}
+	inline void SetMeasurements(float* outputs){
+		memcpy(YData,outputs,n_outputs*sizeof(float));
+	}
+
+	inline float* GetEstimatedState(){
+		return XestData;
+	}
+
+	void Predict();
+	void Update();
+
+private:
+	void FillEye();
+	void FillPk();
+
+	//Attributes
 private:
 
 	unsigned int n_states;
 	unsigned int n_outputs;
 	unsigned int n_inputs;
+	unsigned int floats_used;
+
+	FunctionPt StateFun;
+	FunctionPt MeasureFun;
+	FunctionPt Jacobian_F;
+	FunctionPt Jacobian_H;
+
+	float* JfData;
+	float* JhData;
+	float* QnData;
+	float* RnData;
+
+	float* KkData;
+	float* PkData;
+
+	float* XestData;
+	float* YestData;
+	float* YData;
+	float* UData;
+	float* IData; //Identity
+
+	float* Tmp0Data;
+	float* Tmp1Data;
+	float* Tmp2Data;
+	float* Tmp3Data;
+	float* Tmp4Data;
+	float* Tmp5Data;
+	float* Tmp6Data;
 
 
 	arm_matrix_instance_f32 Jf; // n x n
@@ -39,9 +119,9 @@ private:
 	arm_matrix_instance_f32 Kk; // n x out
 	arm_matrix_instance_f32 Pk; // n x n
 
-	arm_matrix_instance_f32 X_est; // n x 1
+	arm_matrix_instance_f32 Xest; // n x 1
 	arm_matrix_instance_f32 Y; // out x 1
-	arm_matrix_instance_f32 Y_est; // out x 1
+	arm_matrix_instance_f32 Yest; // out x 1
 	arm_matrix_instance_f32 U; // in x 1
 
 
