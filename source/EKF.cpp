@@ -116,34 +116,37 @@ void Kalman::EKF::FillPk(){
 
 	for(unsigned int i=0;i<n_states*n_states;++i){
 		if(i%(n_states+1) == 0)
-		PkData[i] = 100;
+		PkData[i] = 1;
 		else
 		PkData[i] = 0;
 
 	}
 }
 
-void Kalman::EKF::Predict(){
+void Kalman::EKF::Predict(const float* Input){
 	//Kalman->U.pData = system_input; //Entrada de Controle
 
 	//PREDICT
 	//x = f(x,u)
+	memcpy(UData,Input,n_inputs*sizeof(float));
 
-	StateFun(XestData,UData,&Xest);
-
-	Jacobian_F(XestData,UData,&Jf);
-	Jacobian_H(XestData,UData,&Jh);
+	Jacobian_F(XestData,UData,Jf);
+	StateFun(XestData,UData,Xest);
 
 	arm_mat_mult_f32(&Jf, &Pk, &Pk); // Pk = A*Pk
 	arm_mat_trans_f32(&Jf, &tmp1); // tmp1 = A'
 	arm_mat_mult_f32(&Pk, &tmp1, &Pk); // Pk = A*Pk*A'
 	arm_mat_add_f32(&Pk, &Qn, &Pk); // Pk = A*Pk*A' + Qn
 
-	MeasureFun(XestData,UData,&Yest);
 }
 
-void Kalman::EKF::Update(){
-//
+void Kalman::EKF::Update(const float* Output){
+
+	memcpy(YData,Output,n_outputs*sizeof(float));
+
+	Jacobian_H(XestData,UData,Jh);
+	MeasureFun(XestData,UData,Yest);
+
 	//UPDATE
 	//y = y - Cx
 	arm_mat_sub_f32(&Y, &Yest, &Yest); // Yest = Y - Yest

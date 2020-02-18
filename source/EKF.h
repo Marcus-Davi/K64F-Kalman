@@ -15,7 +15,9 @@
 
 //Ponteiro pra funções (jacobiana, processo, measurement, ...)
 // f(x,u) -> Estados Xk, Entradas Uk
-typedef void (*FunctionPt)(const float* Xk,const float *Uk,arm_matrix_instance_f32* M); // M é entrada,saída ou uma matriz
+// TODO Melhorar prototipo ?
+
+typedef void (*KalmanFunctionPt)(const float* Xk,const float *Uk,arm_matrix_instance_f32& M); // M é entrada,saída ou uma matriz
 
 namespace Kalman {
 
@@ -27,27 +29,27 @@ public:
 	virtual ~EKF();
 
 	inline void SetQn(const float* qndata){
-		memcpy(QnData,qndata,n_states*n_states*sizeof(float));
+		memcpy(QnData,qndata,n_states*n_states*sizeof(float)); //eficiente
 	}
 	inline void SetRn(const float* rndata){
-		memcpy(RnData,rndata,n_outputs*n_outputs*sizeof(float));
+		memcpy(RnData,rndata,n_outputs*n_outputs*sizeof(float)); //eficiente
 	}
 	inline void SetX0(const float* x0){
-		memcpy(XestData,x0,n_states*sizeof(float));
+		memcpy(XestData,x0,n_states*sizeof(float)); //eficiente
 
 	}
 
 
-	inline void SetStateFunction(FunctionPt F) {
+	inline void SetStateFunction(KalmanFunctionPt F) {
 		StateFun = F;
 	}
-	inline void  SetStateJacobian(FunctionPt F){
+	inline void  SetStateJacobian(KalmanFunctionPt F){
 		Jacobian_F = F;
 	}
-	inline void  SetMeasurementJacobian(FunctionPt F){
+	inline void  SetMeasurementJacobian(KalmanFunctionPt F){
 		Jacobian_H = F;
 	}
-	inline void SetMeasurementFunction(FunctionPt F){
+	inline void SetMeasurementFunction(KalmanFunctionPt F){
 		MeasureFun = F;
 	}
 
@@ -55,19 +57,19 @@ public:
 		return floats_used;
 	}
 
-	inline void SetInput(float* inputs){
-		memcpy(UData,inputs,n_inputs*sizeof(float));
-	}
-	inline void SetMeasurements(float* outputs){
-		memcpy(YData,outputs,n_outputs*sizeof(float));
-	}
+//	inline void SetInput(float* inputs){
+//		memcpy(UData,inputs,n_inputs*sizeof(float));
+//	}
+//	inline void SetMeasurements(float* outputs){
+//		memcpy(YData,outputs,n_outputs*sizeof(float));
+//	}
 
 	inline float* GetEstimatedState(){
 		return XestData;
 	}
 
-	void Predict();
-	void Update();
+	void Predict(const float* Input);
+	void Update(const float* Output);
 
 private:
 	void FillEye();
@@ -81,10 +83,10 @@ private:
 	unsigned int n_inputs;
 	unsigned int floats_used;
 
-	FunctionPt StateFun;
-	FunctionPt MeasureFun;
-	FunctionPt Jacobian_F;
-	FunctionPt Jacobian_H;
+	KalmanFunctionPt StateFun;
+	KalmanFunctionPt MeasureFun;
+	KalmanFunctionPt Jacobian_F;
+	KalmanFunctionPt Jacobian_H;
 
 	float* JfData;
 	float* JhData;
@@ -137,5 +139,6 @@ private:
 };
 
 } /* namespace Kalman */
+
 
 #endif /* EKF_H_ */
