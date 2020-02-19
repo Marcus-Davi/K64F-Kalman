@@ -79,6 +79,8 @@ EKF::EKF(uint8_t n_states, uint8_t n_inputs, uint8_t n_outputs) {
 EKF::~EKF() {
 	// TODO Auto-generated destructor stub
 
+
+
 	delete JfData;
 	delete JhData;
 	delete QnData;
@@ -160,6 +162,8 @@ void Kalman::EKF::Update(const float* Output){
 	//K = Pk*C'*S
 	arm_mat_mult_f32(&Pk, &tmp5, &tmp6); // Pk*C'
 	arm_mat_mult_f32(&tmp6, &tmp4, &Kk); // Kk = Pk*C'*inv(S);
+//	arm_mat_mult_f32(&Pk, &tmp5, &tmp5); // Pk*C'
+//	arm_mat_mult_f32(&tmp5, &tmp4, &Kk); // Kk = Pk*C'*inv(S);
 	//X = X + Ky
 	arm_mat_mult_f32(&Kk, &Yest, &tmp0);
 	arm_mat_add_f32(&Xest, &tmp0, &Xest);
@@ -167,6 +171,11 @@ void Kalman::EKF::Update(const float* Output){
 	arm_mat_mult_f32(&Kk, &Jh, &tmp1);
 	arm_mat_sub_f32(&I, &tmp1, &tmp1);
 	arm_mat_mult_f32(&tmp1, &Pk, &Pk);
+
+	if(std::isnan(XestData[0]) || std::isnan(XestData[1]) ||std::isnan(XestData[2]) ||std::isnan(XestData[3])){
+		asm("nop");
+
+	}
 }
 
 
