@@ -32,6 +32,7 @@ EKF::EKF(uint8_t n_states, uint8_t n_inputs, uint8_t n_outputs) {
 	UData = new float[n_inputs];
 	YData = new float[n_outputs];
 	IData = new float[n_states*n_states]; //ss
+	EData = new float[n_outputs];
 
 	FillEye();
 
@@ -42,6 +43,10 @@ EKF::EKF(uint8_t n_states, uint8_t n_inputs, uint8_t n_outputs) {
 	Tmp4Data = new float[n_outputs*n_outputs];//oo
 	Tmp5Data = new float[n_states*n_outputs]; //so
 	Tmp6Data = new float[n_states*n_outputs]; //so
+
+	Tmp7Data = new float[n_states*n_states];//ss
+	Tmp8Data = new float[n_states*n_states]; //ss
+	Tmp9Data = new float[n_states*n_states]; //ss
 
 
 
@@ -54,25 +59,24 @@ EKF::EKF(uint8_t n_states, uint8_t n_inputs, uint8_t n_outputs) {
 	arm_mat_init_f32(&Kk, n_states, n_outputs, KkData);
 	arm_mat_init_f32(&Pk, n_states, n_states, PkData);
 
-
-//	arm_mat_init_f32(&KalmanStruct->X, n_states, 1u, Xdata); //Vetor
 	arm_mat_init_f32(&Xest, n_states, 1u, XestData); //Vetor
 	arm_mat_init_f32(&U, n_inputs, 1u, UData); //Vetor
 	arm_mat_init_f32(&Y, n_outputs, 1u, YData); //Vetor
 	arm_mat_init_f32(&Yest, n_outputs, 1u, YestData); //Vetor
 	arm_mat_init_f32(&I, n_states, n_states, IData); //Identidade
+	arm_mat_init_f32(&E, n_outputs, 1u, EData); //Identidade
 
-	arm_mat_init_f32(&tmp0, n_states, 1, Tmp0Data);
-	arm_mat_init_f32(&tmp1, n_states, n_states, Tmp1Data);
-	arm_mat_init_f32(&tmp2, n_outputs, n_states, Tmp2Data);
-	arm_mat_init_f32(&tmp3, n_outputs, n_outputs, Tmp3Data);
-	arm_mat_init_f32(&tmp4, n_outputs, n_outputs, Tmp4Data);
-	arm_mat_init_f32(&tmp5, n_states, n_outputs, Tmp5Data);
-	arm_mat_init_f32(&tmp6, n_states, n_outputs, Tmp6Data);
+	arm_mat_init_f32(&KkE, n_states, 1, Tmp0Data);
+	arm_mat_init_f32(&JfPkJf_, n_states, n_states, Tmp1Data);
+	arm_mat_init_f32(&JhPk, n_outputs, n_states, Tmp2Data);
+	arm_mat_init_f32(&JhPkJh_, n_outputs, n_outputs, Tmp3Data);
+	arm_mat_init_f32(&S, n_outputs, n_outputs, Tmp4Data);
+	arm_mat_init_f32(&Jh_, n_states, n_outputs, Tmp5Data);
+	arm_mat_init_f32(&PkJh_, n_states, n_outputs, Tmp6Data);
 
-	floats_used = n_states*n_states*5 + n_states*n_outputs*5 + n_outputs*n_outputs*3 + n_states + n_outputs + n_inputs;
-
-
+	arm_mat_init_f32(&JfPk, n_states, n_states, Tmp7Data);
+	arm_mat_init_f32(&Jf_, n_states, n_states, Tmp8Data);
+	arm_mat_init_f32(&Pk_update, n_states, n_states, Tmp9Data);
 
 }
 
@@ -101,6 +105,9 @@ EKF::~EKF() {
 	delete Tmp4Data;
 	delete Tmp5Data;
 	delete Tmp6Data;
+	delete Tmp7Data;
+	delete Tmp8Data;
+	delete Tmp9Data;
 }
 
 void Kalman::EKF::FillEye(){
@@ -132,13 +139,16 @@ void Kalman::EKF::Predict(const float* Input){
 	//x = f(x,u)
 	memcpy(UData,Input,n_inputs*sizeof(float));
 
-	Jacobian_F(XestData,UData,Jf);
+	//PREDICT
+	//x = f(x,u)
 	StateFun(XestData,UData,Xest);
+	Jacobian_F(XestData,UData,Jf);
 
-	arm_mat_mult_f32(&Jf, &Pk, &Pk); // Pk = A*Pk
-	arm_mat_trans_f32(&Jf, &tmp1); // tmp1 = A'
-	arm_mat_mult_f32(&Pk, &tmp1, &Pk); // Pk = A*Pk*A'
-	arm_mat_add_f32(&Pk, &Qn, &Pk); // Pk = A*Pk*A' + Qn
+	//Pk = APkA' + Qn
+	arm_mat_mult_f32(&Jf, &Pk, &JfPk); // Pk = Jf*Pk
+	arm_mat_trans_f32(&Jf, &Jf_); // JfTrans = Jf'
+	arm_mat_mult_f32(&JfPk, &Jf_, &JfPkJf_); // Pk = A*Pk*A'
+	arm_mat_add_f32(&JfPkJf_, &Qn, &Pk); // Pk = A*Pk*A' + Qn
 
 }
 
@@ -151,31 +161,28 @@ void Kalman::EKF::Update(const float* Output){
 
 	//UPDATE
 	//y = y - Cx
-	arm_mat_sub_f32(&Y, &Yest, &Yest); // Yest = Y - Yest
+	arm_mat_sub_f32(&Y, &Yest, &E); // Yest = Y - Yest
 	//S = C*Pk*C' + Rn
-	arm_mat_mult_f32(&Jh, &Pk, &tmp2); //C*Pk
-	arm_mat_trans_f32(&Jh, &tmp5); // C'
-	arm_mat_mult_f32(&tmp2, &tmp5, &tmp3); // C*Pk*C'
-	arm_mat_add_f32(&tmp3, &Rn, &tmp3);// C*Pk*C' + Rn
-	//S = inv(S);
-	arm_mat_inverse_f32(&tmp3, &tmp4);
+	arm_mat_mult_f32(&Jh, &Pk, &JhPk); //C*Pk
+	arm_mat_trans_f32(&Jh, &Jh_); // C'
+	arm_mat_mult_f32(&JhPk, &Jh_, &JhPkJh_); // C*Pk*C'
+	arm_mat_add_f32(&JhPkJh_, &Rn, &JhPkJh_);// C*Pk*C' + Rn
+	//S = inv(C*Pk*C' + Rn);
+	arm_mat_inverse_f32(&JhPkJh_, &S);
 	//K = Pk*C'*S
-	arm_mat_mult_f32(&Pk, &tmp5, &tmp6); // Pk*C'
-	arm_mat_mult_f32(&tmp6, &tmp4, &Kk); // Kk = Pk*C'*inv(S);
-//	arm_mat_mult_f32(&Pk, &tmp5, &tmp5); // Pk*C'
-//	arm_mat_mult_f32(&tmp5, &tmp4, &Kk); // Kk = Pk*C'*inv(S);
+	arm_mat_mult_f32(&Pk, &Jh_, &PkJh_); // Pk*C'
+	arm_mat_mult_f32(&PkJh_, &S, &Kk); // Kk = Pk*C'*S;
 	//X = X + Ky
-	arm_mat_mult_f32(&Kk, &Yest, &tmp0);
-	arm_mat_add_f32(&Xest, &tmp0, &Xest);
+	arm_mat_mult_f32(&Kk, &E, &KkE);
+	arm_mat_add_f32(&Xest, &KkE, &Xest);
 	//Pk = (I- K*C)*Pk
-	arm_mat_mult_f32(&Kk, &Jh, &tmp1);
-	arm_mat_sub_f32(&I, &tmp1, &tmp1);
-	arm_mat_mult_f32(&tmp1, &Pk, &Pk);
+	arm_mat_mult_f32(&Kk, &Jh, &JfPkJf_);
+	arm_mat_sub_f32(&I, &JfPkJf_, &JfPkJf_);
+	arm_mat_mult_f32(&JfPkJf_, &Pk, &Pk_update);
+	//Copia Pk_update para Pk
+	memcpy(Pk.pData,Pk_update.pData,sizeof(float)*n_states*n_states);
 
-	if(std::isnan(XestData[0]) || std::isnan(XestData[1]) ||std::isnan(XestData[2]) ||std::isnan(XestData[3])){
-		asm("nop");
 
-	}
 }
 
 

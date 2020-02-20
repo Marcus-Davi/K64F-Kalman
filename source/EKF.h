@@ -101,6 +101,7 @@ private:
 	float* YData;
 	float* UData;
 	float* IData; //Identity
+	float* EData;
 
 	float* Tmp0Data;
 	float* Tmp1Data;
@@ -109,6 +110,9 @@ private:
 	float* Tmp4Data;
 	float* Tmp5Data;
 	float* Tmp6Data;
+	float* Tmp7Data;
+	float* Tmp8Data;
+	float* Tmp9Data;
 
 
 	arm_matrix_instance_f32 Jf; // n x n
@@ -125,17 +129,21 @@ private:
 	arm_matrix_instance_f32 Y; // out x 1
 	arm_matrix_instance_f32 Yest; // out x 1
 	arm_matrix_instance_f32 U; // in x 1
-
+	arm_matrix_instance_f32 E; // out x 1
 
 	arm_matrix_instance_f32 I; // n x n
 
-	arm_matrix_instance_f32 tmp0; //n x 1 -> A*x, B*u, K*y
-	arm_matrix_instance_f32 tmp1; //n x n -> A*Pk*A', Kk*C
-	arm_matrix_instance_f32 tmp2; //out x n -> C*Pk
-	arm_matrix_instance_f32 tmp3; //out x out -> C*Pk*C'
-	arm_matrix_instance_f32 tmp4; //out x out -> out x out |||| TESTAR com tmp3 primeiro
-	arm_matrix_instance_f32 tmp5; //n x out -> C'
-	arm_matrix_instance_f32 tmp6; //n x out Pk*C'
+	arm_matrix_instance_f32 KkE; //n x 1 -> A*x, B*u, K*y
+	arm_matrix_instance_f32 JfPkJf_; //n x n -> A*Pk*A', Kk*C
+	arm_matrix_instance_f32 JhPk; //out x n -> C*Pk
+	arm_matrix_instance_f32 JhPkJh_; //out x out -> C*Pk*C'
+	arm_matrix_instance_f32 S; //out x out -> out x out |||| TESTAR com tmp3 primeiro
+	arm_matrix_instance_f32 Jh_; //n x out -> C'
+	arm_matrix_instance_f32 PkJh_; //n x out Pk*C'
+
+	arm_matrix_instance_f32 JfPk; // n x n
+	arm_matrix_instance_f32 Jf_; // n x out
+	arm_matrix_instance_f32 Pk_update; // n x m
 };
 
 } /* namespace Kalman */
