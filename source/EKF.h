@@ -8,16 +8,10 @@
 #ifndef EKF_H_
 #define EKF_H_
 
-//tentar fazer memcpy mais legível!
-
 #include "arm_math.h"
-//#include "stdint.h"
 
-//Ponteiro pra funções (jacobiana, processo, measurement, ...)
-// f(x,u) -> Estados Xk, Entradas Uk
 // TODO Melhorar prototipo ?
-
-typedef void (*KalmanFunctionPt)(const float* Xk,const float *Uk,arm_matrix_instance_f32& M); // M é entrada,saída ou uma matriz
+typedef void (*KalmanFunctionPt)(const float* Xk,const float *Uk,void* Res); // M é entrada,saída ou uma matriz
 
 namespace Kalman {
 
@@ -53,23 +47,16 @@ public:
 		MeasureFun = F;
 	}
 
-	inline unsigned int GetFloatsUsed(){
-		return floats_used;
+	inline unsigned int GetBytesUsed(){
+		return bytes_used;
 	}
-
-//	inline void SetInput(float* inputs){
-//		memcpy(UData,inputs,n_inputs*sizeof(float));
-//	}
-//	inline void SetMeasurements(float* outputs){
-//		memcpy(YData,outputs,n_outputs*sizeof(float));
-//	}
 
 	inline float* GetEstimatedState(){
 		return XestData;
 	}
 
-	void Predict(float* Input);
-	void Update(float* Output);
+	void Predict(const float* Input);
+	void Update(const float* Output);
 
 private:
 	void FillEye();
@@ -81,7 +68,7 @@ private:
 	unsigned int n_states;
 	unsigned int n_outputs;
 	unsigned int n_inputs;
-	unsigned int floats_used;
+	unsigned int bytes_used;
 
 	float* JfData;
 	float* JhData;
@@ -95,7 +82,7 @@ private:
 	float* YestData;
 	float* YData;
 	float* UData;
-	float* IData; //Identity
+	float* IData;
 	float* EData;
 
 	float* Tmp0Data;
@@ -107,7 +94,7 @@ private:
 	float* Tmp6Data;
 	float* Tmp7Data;
 	float* Tmp8Data;
-	float* Tmp9Data;
+
 
 
 	KalmanFunctionPt StateFun;
@@ -131,21 +118,18 @@ private:
 	arm_matrix_instance_f32 U; // in x 1
 	arm_matrix_instance_f32 E; // out x 1
 
-
 	arm_matrix_instance_f32 I; // n x n
 
+	arm_matrix_instance_f32 Tmp0; // n x n
+	arm_matrix_instance_f32 Tmp1; // n x n
+	arm_matrix_instance_f32 Tmp2; // n x n
+	arm_matrix_instance_f32 Tmp3; // out x n
+	arm_matrix_instance_f32 Tmp4; // n x out
+	arm_matrix_instance_f32 Tmp5; // out x out
+	arm_matrix_instance_f32 Tmp6; // out x out
+	arm_matrix_instance_f32 Tmp7; // n x out
+	arm_matrix_instance_f32 Tmp8; // n x 1
 
-	arm_matrix_instance_f32 Tmp7; // n x n
-	arm_matrix_instance_f32 Tmp8; // n x out
-	arm_matrix_instance_f32 Tmp1; //n x n
-
-	arm_matrix_instance_f32 Tmp0; //n x 1
-	arm_matrix_instance_f32 Tmp2; //out x n
-	arm_matrix_instance_f32 Tmp3; //out x out
-	arm_matrix_instance_f32 Tmp4; //out x out
-	arm_matrix_instance_f32 Tmp5; //n x out
-	arm_matrix_instance_f32 Tmp6; //n x out
-	arm_matrix_instance_f32 Tmp9; // n x m
 };
 
 } /* namespace Kalman */
