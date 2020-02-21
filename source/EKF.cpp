@@ -23,7 +23,7 @@ EKF::EKF(uint8_t n_states, uint8_t n_inputs, uint8_t n_outputs) {
 	KkData = new float[n_states*n_outputs]; //so
 	PkData = new float[n_states*n_states]; //ss
 
-	FillPk();
+
 
 	XestData = new float[n_states];
 	YestData = new float[n_outputs];
@@ -32,7 +32,7 @@ EKF::EKF(uint8_t n_states, uint8_t n_inputs, uint8_t n_outputs) {
 	IData = new float[n_states*n_states]; //ss
 	EData = new float[n_outputs];
 
-	FillEye();
+
 
 	Tmp0Data = new float[n_states*n_states]; //ss
 	Tmp1Data = new float[n_states*n_states]; //ss
@@ -43,6 +43,9 @@ EKF::EKF(uint8_t n_states, uint8_t n_inputs, uint8_t n_outputs) {
 	Tmp6Data = new float[n_outputs*n_outputs]; //oo
 	Tmp7Data = new float[n_states*n_outputs]; //so
 	Tmp8Data = new float[n_states]; //s
+
+	FillPk();
+	FillEye();
 
 
 	arm_mat_init_f32(&Jf, n_states, n_states, JfData);
@@ -73,7 +76,7 @@ EKF::EKF(uint8_t n_states, uint8_t n_inputs, uint8_t n_outputs) {
 
 
 	bytes_used = sizeof(float)*(n_states*n_states*7 + n_states*n_outputs*5 + n_outputs*n_outputs*3 +
-								n_states*2 + n_outputs*3 + n_inputs );
+								n_states*2 + n_outputs*3 + n_inputs);
 
 }
 
@@ -106,29 +109,9 @@ EKF::~EKF() {
 
 }
 
-void Kalman::EKF::FillEye(){
 
-	for(unsigned int i=0;i<n_states*n_states;++i){
-		if(i%(n_states+1) == 0)
-		IData[i] = 1;
-		else
-		IData[i] = 0;
 
-	}
-}
-
-void Kalman::EKF::FillPk(){
-
-	for(unsigned int i=0;i<n_states*n_states;++i){
-		if(i%(n_states+1) == 0)
-		PkData[i] = 1;
-		else
-		PkData[i] = 0;
-
-	}
-}
-
-void Kalman::EKF::Predict(const float* Input){
+void EKF::Predict(const float* Input){
 
 	memcpy(UData,Input,n_inputs*sizeof(float));
 
@@ -145,7 +128,7 @@ void Kalman::EKF::Predict(const float* Input){
 
 }
 
-void Kalman::EKF::Update(const float* Output){
+void EKF::Update(const float* Output){
 
 	memcpy(YData,Output,n_outputs*sizeof(float));
 
@@ -177,7 +160,28 @@ void Kalman::EKF::Update(const float* Output){
 
 	memcpy(Pk.pData,Tmp1.pData,sizeof(float)*n_states*n_states);
 
+}
 
+void EKF::FillEye(){
+
+	for(unsigned int i=0;i<n_states*n_states;++i){
+		if(i%(n_states+1) == 0)
+		IData[i] = 1;
+		else
+		IData[i] = 0;
+
+	}
+}
+
+void EKF::FillPk(){
+
+	for(unsigned int i=0;i<n_states*n_states;++i){
+		if(i%(n_states+1) == 0)
+		PkData[i] = 1;
+		else
+		PkData[i] = 0;
+
+	}
 }
 
 

@@ -9,20 +9,21 @@
 #define EKF_STACK_H_
 
 #include "arm_math.h"
+#include "KalmanFunProt.h"
 
+// Here we define explicitly the filter dimensions
 #define N_STATES 4
-#define N_OUTPUTS 6 // acc + mag
-#define N_INPUTS 3 //gyroscope
+#define N_OUTPUTS 6
+#define N_INPUTS 3
 
-typedef void (*KalmanFunctionPt)(const float* Xk,const float *Uk,arm_matrix_instance_f32* M); // M é entrada,saída ou uma matriz
 
 namespace Kalman {
 
 class EKF_Stack {
 
 public:
-
 	EKF_Stack();
+	virtual ~EKF_Stack();
 
 	inline void SetQn(const float* qndata){
 		memcpy(Qn.pData,qndata,N_STATES*N_STATES*sizeof(float)); //eficiente
@@ -32,13 +33,40 @@ public:
 	}
 	inline void SetX0(const float* x0){
 		memcpy(Xest.pData,x0,N_STATES*sizeof(float)); //eficiente
+	}
 
+
+	inline void SetStateFunction(KalmanFunctionPt F) {
+		StateFun = F;
+	}
+	inline void  SetStateJacobian(KalmanFunctionPt F){
+		Jacobian_F = F;
+	}
+	inline void  SetMeasurementJacobian(KalmanFunctionPt F){
+		Jacobian_H = F;
+	}
+	inline void SetMeasurementFunction(KalmanFunctionPt F){
+		MeasureFun = F;
+	}
+
+	inline unsigned int GetBytesUsed(){
+		return bytes_used;
 	}
 
 	inline float* GetEstimatedState(){
 		return Xest.pData;
 	}
+
+	void Predict(const float* Input);
+	void Update(const float* Output);
+
 private:
+
+	void FillEye();
+	void FillPk();
+
+	unsigned int bytes_used = sizeof(float)*(N_STATES*N_STATES*7 + N_STATES*N_OUTPUTS*5 + N_OUTPUTS*N_OUTPUTS*3 +
+			N_STATES*2 + N_OUTPUTS*3 + N_INPUTS);
 
 	KalmanFunctionPt StateFun;
 	KalmanFunctionPt MeasureFun;
@@ -78,24 +106,6 @@ private:
 	arm_matrix_instance_f32 Jf_; // n x out
 	arm_matrix_instance_f32 Pk_update; // n x m
 
-
-public:
-
-	inline void SetStateFunction(KalmanFunctionPt F) {
-		StateFun = F;
-	}
-	inline void  SetStateJacobian(KalmanFunctionPt F){
-		Jacobian_F = F;
-	}
-	inline void  SetMeasurementJacobian(KalmanFunctionPt F){
-		Jacobian_H = F;
-	}
-	inline void SetMeasurementFunction(KalmanFunctionPt F){
-		MeasureFun = F;
-	}
-
-	void Predict(float* system_input);
-	void Update(float* system_output);
 
 };
 

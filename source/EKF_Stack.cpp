@@ -23,7 +23,7 @@ float KQ_Y[N_OUTPUTS];
 float KQ_Yest[N_OUTPUTS];
 float KQ_E[N_OUTPUTS];
 
-float KQ_I[N_STATES*N_STATES] = {1,0,0,0,0,1,0,0,0,0,1,0,0,0,0,1};
+float KQ_I[N_STATES*N_STATES];
 
 float KQ_tmp0[N_STATES]; // n x 1
 float KQ_tmp1[N_STATES*N_STATES]; // n x n
@@ -73,11 +73,22 @@ EKF_Stack::EKF_Stack(){
 	arm_mat_init_f32(&Jf_, N_STATES, N_STATES, KQ_JfTrans);
 	arm_mat_init_f32(&Pk_update, N_STATES, N_STATES, KQ_PkUpdate);
 
+	FillPk();
+	FillEye();
+
 
 }
 
-void EKF_Stack::Predict(float* system_input){
-	U.pData = system_input; //Entrada de Controle
+
+EKF_Stack::~EKF_Stack(){
+
+}
+
+
+void EKF_Stack::Predict(const float* Input){
+
+
+	memcpy(U.pData,Input,N_INPUTS*sizeof(float));
 
 	//PREDICT
 	//x = f(x,u)
@@ -93,8 +104,9 @@ void EKF_Stack::Predict(float* system_input){
 
 }
 
-void EKF_Stack::Update(float* system_output){
-	Y.pData = system_output; //Leitura
+void EKF_Stack::Update(const float* Output){
+
+	memcpy(Y.pData,Output,N_OUTPUTS*sizeof(float));
 
 	MeasureFun(Xest.pData,U.pData,&Yest);
 	Jacobian_H(Xest.pData,U.pData,&Jh);
@@ -122,6 +134,28 @@ void EKF_Stack::Update(float* system_output){
 	//Copia Pk_update para Pk
 	memcpy(Pk.pData,Pk_update.pData,sizeof(float)*N_STATES*N_STATES);
 
+}
+
+void EKF_Stack::FillEye(){
+
+	for(unsigned int i=0;i<N_STATES*N_STATES;++i){
+		if(i%(N_STATES+1) == 0)
+		I.pData[i] = 1;
+		else
+		I.pData[i] = 0;
+
+	}
+}
+
+void EKF_Stack::FillPk(){
+
+	for(unsigned int i=0;i<N_STATES*N_STATES;++i){
+		if(i%(N_STATES+1) == 0)
+		Pk.pData[i] = 1;
+		else
+		Pk.pData[i] = 0;
+
+	}
 }
 
 }

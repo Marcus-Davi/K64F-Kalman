@@ -8,10 +8,9 @@
 #ifndef EKF_H_
 #define EKF_H_
 
-#include "arm_math.h"
+#include "KalmanFunProt.h"
+#include "arm_math.h" //usar DSP
 
-// TODO Melhorar prototipo ?
-typedef void (*KalmanFunctionPt)(const float* Xk,const float *Uk,void* Res); // M é entrada,saída ou uma matriz
 
 namespace Kalman {
 
@@ -23,14 +22,13 @@ public:
 	virtual ~EKF();
 
 	inline void SetQn(const float* qndata){
-		memcpy(QnData,qndata,n_states*n_states*sizeof(float)); //eficiente
+		memcpy(Qn.pData,qndata,n_states*n_states*sizeof(float)); //eficiente
 	}
 	inline void SetRn(const float* rndata){
-		memcpy(RnData,rndata,n_outputs*n_outputs*sizeof(float)); //eficiente
+		memcpy(Rn.pData,rndata,n_outputs*n_outputs*sizeof(float)); //eficiente
 	}
 	inline void SetX0(const float* x0){
-		memcpy(XestData,x0,n_states*sizeof(float)); //eficiente
-
+		memcpy(Xest.pData,x0,n_states*sizeof(float)); //eficiente
 	}
 
 
@@ -52,18 +50,16 @@ public:
 	}
 
 	inline float* GetEstimatedState(){
-		return XestData;
+		return Xest.pData;
 	}
 
 	void Predict(const float* Input);
 	void Update(const float* Output);
 
 private:
+
 	void FillEye();
 	void FillPk();
-
-	//Attributes
-private:
 
 	unsigned int n_states;
 	unsigned int n_outputs;
