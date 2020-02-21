@@ -48,8 +48,6 @@ EKF::EKF(uint8_t n_states, uint8_t n_inputs, uint8_t n_outputs) {
 	Tmp8Data = new float[n_states*n_states]; //ss
 	Tmp9Data = new float[n_states*n_states]; //ss
 
-
-
 	arm_mat_init_f32(&Jf, n_states, n_states, JfData);
 	arm_mat_init_f32(&Jh, n_outputs, n_states, JhData);
 //
@@ -66,17 +64,17 @@ EKF::EKF(uint8_t n_states, uint8_t n_inputs, uint8_t n_outputs) {
 	arm_mat_init_f32(&I, n_states, n_states, IData); //Identidade
 	arm_mat_init_f32(&E, n_outputs, 1u, EData); //Identidade
 
-	arm_mat_init_f32(&KkE, n_states, 1, Tmp0Data);
-	arm_mat_init_f32(&JfPkJf_, n_states, n_states, Tmp1Data);
-	arm_mat_init_f32(&JhPk, n_outputs, n_states, Tmp2Data);
-	arm_mat_init_f32(&JhPkJh_, n_outputs, n_outputs, Tmp3Data);
-	arm_mat_init_f32(&S, n_outputs, n_outputs, Tmp4Data);
-	arm_mat_init_f32(&Jh_, n_states, n_outputs, Tmp5Data);
-	arm_mat_init_f32(&PkJh_, n_states, n_outputs, Tmp6Data);
+	arm_mat_init_f32(&Tmp0, n_states, 1, Tmp0Data);
+	arm_mat_init_f32(&Tmp1, n_states, n_states, Tmp1Data);
+	arm_mat_init_f32(&Tmp2, n_outputs, n_states, Tmp2Data);
+	arm_mat_init_f32(&Tmp3, n_outputs, n_outputs, Tmp3Data);
+	arm_mat_init_f32(&Tmp4, n_outputs, n_outputs, Tmp4Data);
+	arm_mat_init_f32(&Tmp5, n_states, n_outputs, Tmp5Data);
+	arm_mat_init_f32(&Tmp6, n_states, n_outputs, Tmp6Data);
 
-	arm_mat_init_f32(&JfPk, n_states, n_states, Tmp7Data);
-	arm_mat_init_f32(&Jf_, n_states, n_states, Tmp8Data);
-	arm_mat_init_f32(&Pk_update, n_states, n_states, Tmp9Data);
+	arm_mat_init_f32(&Tmp7, n_states, n_states, Tmp7Data);
+	arm_mat_init_f32(&Tmp8, n_states, n_states, Tmp8Data);
+	arm_mat_init_f32(&Tmp9, n_states, n_states, Tmp9Data);
 
 }
 
@@ -132,55 +130,58 @@ void Kalman::EKF::FillPk(){
 	}
 }
 
-void Kalman::EKF::Predict(const float* Input){
+void Kalman::EKF::Predict(float* Input){
 	//Kalman->U.pData = system_input; //Entrada de Controle
 
 	//PREDICT
 	//x = f(x,u)
 	memcpy(UData,Input,n_inputs*sizeof(float));
+//	U.pData = Input; //Entrada de Controle
 
 	//PREDICT
 	//x = f(x,u)
-	StateFun(XestData,UData,Xest);
-	Jacobian_F(XestData,UData,Jf);
+	StateFun(Xest.pData,U.pData,Xest);
+	Jacobian_F(Xest.pData,U.pData,Jf);
 
-	//Pk = APkA' + Qn
-	arm_mat_mult_f32(&Jf, &Pk, &JfPk); // Pk = Jf*Pk
-	arm_mat_trans_f32(&Jf, &Jf_); // JfTrans = Jf'
-	arm_mat_mult_f32(&JfPk, &Jf_, &JfPkJf_); // Pk = A*Pk*A'
-	arm_mat_add_f32(&JfPkJf_, &Qn, &Pk); // Pk = A*Pk*A' + Qn
+	//Pk = JfPkJf' + Qn
+	arm_mat_mult_f32(&Jf, &Pk, &Tmp7); // Pk = Jf*Pk
+	arm_mat_trans_f32(&Jf, &Tmp8); // JfTrans = Jf'
+	arm_mat_mult_f32(&Tmp7, &Tmp8, &Tmp1); // Pk = A*Pk*A'
+	arm_mat_add_f32(&Tmp1, &Qn, &Pk); // Pk = A*Pk*A' + Qn
 
 }
 
-void Kalman::EKF::Update(const float* Output){
+void Kalman::EKF::Update(float* Output){
 
 	memcpy(YData,Output,n_outputs*sizeof(float));
+//	Y.pData = Output; //Entrada de Controle
 
-	Jacobian_H(XestData,UData,Jh);
-	MeasureFun(XestData,UData,Yest);
+	MeasureFun(Xest.pData,U.pData,Yest);
+	Jacobian_H(Xest.pData,U.pData,Jh);
+
 
 	//UPDATE
-	//y = y - Cx
+	//e = y - yest
 	arm_mat_sub_f32(&Y, &Yest, &E); // Yest = Y - Yest
 	//S = C*Pk*C' + Rn
-	arm_mat_mult_f32(&Jh, &Pk, &JhPk); //C*Pk
-	arm_mat_trans_f32(&Jh, &Jh_); // C'
-	arm_mat_mult_f32(&JhPk, &Jh_, &JhPkJh_); // C*Pk*C'
-	arm_mat_add_f32(&JhPkJh_, &Rn, &JhPkJh_);// C*Pk*C' + Rn
+	arm_mat_mult_f32(&Jh, &Pk, &Tmp2); //C*Pk
+	arm_mat_trans_f32(&Jh, &Tmp5); // C'
+	arm_mat_mult_f32(&Tmp2, &Tmp5, &Tmp3); // C*Pk*C'
+	arm_mat_add_f32(&Tmp3, &Rn, &Tmp3);// C*Pk*C' + Rn
 	//S = inv(C*Pk*C' + Rn);
-	arm_mat_inverse_f32(&JhPkJh_, &S);
+	arm_mat_inverse_f32(&Tmp3, &Tmp4);
 	//K = Pk*C'*S
-	arm_mat_mult_f32(&Pk, &Jh_, &PkJh_); // Pk*C'
-	arm_mat_mult_f32(&PkJh_, &S, &Kk); // Kk = Pk*C'*S;
+	arm_mat_mult_f32(&Pk, &Tmp5, &Tmp6); // Pk*C'
+	arm_mat_mult_f32(&Tmp6, &Tmp4, &Kk); // Kk = Pk*C'*S;
 	//X = X + Ky
-	arm_mat_mult_f32(&Kk, &E, &KkE);
-	arm_mat_add_f32(&Xest, &KkE, &Xest);
+	arm_mat_mult_f32(&Kk, &E, &Tmp0);
+	arm_mat_add_f32(&Xest, &Tmp0, &Xest);
 	//Pk = (I- K*C)*Pk
-	arm_mat_mult_f32(&Kk, &Jh, &JfPkJf_);
-	arm_mat_sub_f32(&I, &JfPkJf_, &JfPkJf_);
-	arm_mat_mult_f32(&JfPkJf_, &Pk, &Pk_update);
+	arm_mat_mult_f32(&Kk, &Jh, &Tmp1);
+	arm_mat_sub_f32(&I, &Tmp1, &Tmp1);
+	arm_mat_mult_f32(&Tmp1, &Pk, &Tmp9);
 	//Copia Pk_update para Pk
-	memcpy(Pk.pData,Pk_update.pData,sizeof(float)*n_states*n_states);
+	memcpy(Pk.pData,Tmp9.pData,sizeof(float)*n_states*n_states);
 
 
 }

@@ -68,8 +68,8 @@ public:
 		return XestData;
 	}
 
-	void Predict(const float* Input);
-	void Update(const float* Output);
+	void Predict(float* Input);
+	void Update(float* Output);
 
 private:
 	void FillEye();
@@ -82,11 +82,6 @@ private:
 	unsigned int n_outputs;
 	unsigned int n_inputs;
 	unsigned int floats_used;
-
-	KalmanFunctionPt StateFun;
-	KalmanFunctionPt MeasureFun;
-	KalmanFunctionPt Jacobian_F;
-	KalmanFunctionPt Jacobian_H;
 
 	float* JfData;
 	float* JhData;
@@ -115,8 +110,13 @@ private:
 	float* Tmp9Data;
 
 
+	KalmanFunctionPt StateFun;
+	KalmanFunctionPt MeasureFun;
+	KalmanFunctionPt Jacobian_F;
+	KalmanFunctionPt Jacobian_H;
+
 	arm_matrix_instance_f32 Jf; // n x n
-	arm_matrix_instance_f32 Jh; // out x out
+	arm_matrix_instance_f32 Jh; // out x n
 
 
 	arm_matrix_instance_f32 Qn; // n x n
@@ -131,19 +131,21 @@ private:
 	arm_matrix_instance_f32 U; // in x 1
 	arm_matrix_instance_f32 E; // out x 1
 
+
 	arm_matrix_instance_f32 I; // n x n
 
-	arm_matrix_instance_f32 KkE; //n x 1 -> A*x, B*u, K*y
-	arm_matrix_instance_f32 JfPkJf_; //n x n -> A*Pk*A', Kk*C
-	arm_matrix_instance_f32 JhPk; //out x n -> C*Pk
-	arm_matrix_instance_f32 JhPkJh_; //out x out -> C*Pk*C'
-	arm_matrix_instance_f32 S; //out x out -> out x out |||| TESTAR com tmp3 primeiro
-	arm_matrix_instance_f32 Jh_; //n x out -> C'
-	arm_matrix_instance_f32 PkJh_; //n x out Pk*C'
 
-	arm_matrix_instance_f32 JfPk; // n x n
-	arm_matrix_instance_f32 Jf_; // n x out
-	arm_matrix_instance_f32 Pk_update; // n x m
+	arm_matrix_instance_f32 Tmp7; // n x n
+	arm_matrix_instance_f32 Tmp8; // n x out
+	arm_matrix_instance_f32 Tmp1; //n x n
+
+	arm_matrix_instance_f32 Tmp0; //n x 1
+	arm_matrix_instance_f32 Tmp2; //out x n
+	arm_matrix_instance_f32 Tmp3; //out x out
+	arm_matrix_instance_f32 Tmp4; //out x out
+	arm_matrix_instance_f32 Tmp5; //n x out
+	arm_matrix_instance_f32 Tmp6; //n x out
+	arm_matrix_instance_f32 Tmp9; // n x m
 };
 
 } /* namespace Kalman */
