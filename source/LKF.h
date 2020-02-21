@@ -14,7 +14,7 @@ namespace Kalman {
 
 class LKF {
 public:
-	LKF();
+	LKF(uint8_t n_states, uint8_t n_inputs, uint8_t n_outputs);
 	virtual ~LKF();
 
 	inline void SetQn(const float* qndata){
@@ -27,14 +27,37 @@ public:
 	memcpy(Xest.pData,x0,n_states*sizeof(float)); //eficiente
 	}
 
+	inline void SetA(const float* A_){
+	memcpy(A.pData,A_,n_states*n_states*sizeof(float)); //eficiente
+	}
+
+	inline void SetB(const float* B_){
+	memcpy(B.pData,B_,n_states*n_inputs*sizeof(float)); //eficiente
+	}
+
+	inline void SetC(const float* C_){
+	memcpy(C.pData,C_,n_outputs*n_states*sizeof(float)); //eficiente
+	}
+
+	inline float* GetEstimatedState(){
+		return Xest.pData;
+	}
+
+	void Predict(const float* Input);
+	void Update(const float* Output);
+
 
 
 private:
+
+	void FillEye();
+	void FillPk();
 
 	unsigned int n_states;
 	unsigned int n_outputs;
 	unsigned int n_inputs;
 	unsigned int bytes_used;
+
 
 	float* AData;
 	float* BData;
@@ -61,6 +84,7 @@ private:
 	float* Tmp6Data;
 	float* Tmp7Data;
 	float* Tmp8Data;
+	float* Tmp9Data;
 
 
 	arm_matrix_instance_f32 A; // n x n
@@ -91,6 +115,7 @@ private:
 	arm_matrix_instance_f32 Tmp6; // out x out
 	arm_matrix_instance_f32 Tmp7; // n x out
 	arm_matrix_instance_f32 Tmp8; // n x 1
+	arm_matrix_instance_f32 Tmp9; // n x 1
 
 };
 
