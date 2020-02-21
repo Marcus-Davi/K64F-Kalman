@@ -58,6 +58,7 @@ private:
 	unsigned int n_inputs;
 	unsigned int bytes_used;
 
+	//Melhorar aqui a delcaração de variáveis. tá meio lixo. criar classe "kalman matrix?"
 
 	float* AData;
 	float* BData;
